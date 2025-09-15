@@ -1,9 +1,9 @@
 Package: SpliceFungi
 Type: Package
-Title: What the Package Does (Title Case)
+Title: mRNA splicing analysis for fungal genomes
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
+Author: pooja sethiya
+Maintainer: The package maintainer <poojasethiya24@gmail.comt>
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
 License: What license is it under?
