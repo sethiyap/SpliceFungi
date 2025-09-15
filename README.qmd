@@ -1,0 +1,125 @@
+---
+title: "Splice Fungi"
+smooth-scroll: true
+format: gfm
+editor:
+  markdown:
+    wrap: 72
+    references: 
+      location: block
+    canonical: true
+execute:
+  echo: true
+  warning: false
+---
+
+## Splicing Analysis on fungal RNASeq data
+
+RNASeq data was generated for Cn cells treated with drug. SpliceWiz,
+R-package was implemented to process BAM files and further analyse the
+splicing results.
+
+### Install SpliceFungi
+
+```{r install spliceFungi, echo=TRUE,eval=FALSE, message=FALSE}
+
+if(require("devtools")){
+        options(repos = BiocManager::repositories())
+        devtools::install_github("sethiyap/SpliceFungi",build = FALSE)
+} else{
+        options(repos = BiocManager::repositories())
+        install.packages("devtools")
+        devtools::install_github("sethiyap/SpliceFungi", build = FALSE)
+}
+
+```
+
+#### Process BAM files
+
+Fastq files were aligned to ensembl genome using STAR aligner and are
+processed with SpliceWiz (as below).
+
+```{r process_bam, eval=FALSE}
+
+ref_path <- "/Users/pooja/Documents/CDK7_project/SpliceFungi/Reference"
+
+
+bam_path <- SpliceWiz::findBAMS(sample_path = "/Users/pooja/Documents/CDK7_project/RNASeq/RNASeq_5h/Mev_5h_ensembl/", level = 0)
+
+pb_path=file.path("/Users/pooja/Documents/CDK7_project/SpliceFungi", "spliceWiz_Mev_5h")
+
+SpliceWiz::processBAM(
+    bamfiles = bam_path$path,
+    sample_names = bam_path$sample,
+    reference_path = ref_path,
+    n_threads = 1,
+    output_path = pb_path,
+    run_featureCounts = T
+)
+
+# Load gene counts
+gene_counts <- readRDS(file.path(pb_path, "main.FC.Rds"))
+
+# Access gene counts:
+gene_counts$counts
+```
+
+## Sample analysis
+
+### WT+SY-1365 (1h)
+
+```{r mev_1h_splicing, echo=FALSE, message=FALSE}
+
+ref_path <- "/Users/pooja/Documents/CDK7_project/SpliceFungi/Reference"
+
+pb_path_Mev_1h <- file.path("/Users/pooja/Documents/CDK7_project/SpliceFungi", "spliceWiz_process_1h_Mev/")
+
+control = "WT_1h"
+
+treatment = "WT_Mev_1h"
+
+se_Mev_1h <- SpliceFungi::get_ASE(reference_path = ref_path, processed_bam_path = pb_path_Mev_1h, control = control, treatment = treatment, replicates = 3)
+
+se.filtered_Mev_1h <- se_Mev_1h[SpliceWiz::applyFilters(se_Mev_1h),]
+
+res_edgeR_Mev_1h <- SpliceFungi::get_DE_ASE(se_filtered_object =  se.filtered_Mev_1h, control = control, treatment = treatment, plot_volcano = FALSE)
+
+raw_value_Mev_1h <- SummarizedExperiment::assay(se.filtered_Mev_1h, "Included") %>%
+                tibble::as_tibble(rownames = NA)
+
+# splicing stats
+
+SpliceFungi::splicing_statistics(se_filtered_object = se.filtered_Mev_1h, res_edgeR = res_edgeR_Mev_1h)
+
+```
+
+### ASE coverage plots
+
+#### Intron Exclusion
+
+```{r ase_coverage_plot_IR exclude}
+
+event_list <- c("CNAG_03333/AFR96554_Intron1/clean", "CNAG_04112/AFR96843_Intron8/clean")
+
+SpliceFungi::coverage_plot_for_list(event_list = event_list, res_edgeR = res_edgeR_Mev_1h, se_object = se_Mev_1h, control = "WT_1h",treatment = "WT_Mev_1h")
+```
+
+#### Intron retention
+
+```{r ase_coverage_plot_IR}
+
+event_list <- c("CNAG_00399/AFR92532_Intron6/clean", "CNAG_06032/AFR98271_Intron4/clean")
+
+SpliceFungi::coverage_plot_for_list(event_list = event_list, res_edgeR = res_edgeR_Mev_1h, se_object = se_Mev_1h, control = "WT_1h",treatment = "WT_Mev_1h")
+
+```
+
+#### A3Ss
+
+```{r ase_coverage_plot_A3S}
+
+event_list <- c("A3SS:CNAG_00075-novelTr003-exon2;AFR92212-exon2", "A3SS:AFR95560-exon6;CNAG_07164-novelTr002-exon2")
+
+SpliceFungi::coverage_plot_for_list(event_list = event_list, res_edgeR = res_edgeR_Mev_1h, se_object = se_Mev_1h, control = "WT_1h",treatment = "WT_Mev_1h")
+
+```
