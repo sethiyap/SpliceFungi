@@ -1,0 +1,55 @@
+---
+title: "BS181_Splicing"
+format: html
+editor: visual
+---
+
+## BS
+
+```{r GO_analysis}
+
+go_dt <- readr::read_delim("images/BS181_5h_IR_genes.txt", delim="\t", col_names = TRUE)
+
+#install.packages("../../CnCAKfunctions/org.CneoformansH99v64.eg.db")
+
+library(org.CneoformansH99v64.eg.db)
+
+ego <- clusterProfiler::enrichGO(gene = go_dt$EventName,
+                                 OrgDb         = org.CneoformansH99v64.eg.db,
+                                 ont           = "BP",
+                                 keyType = "GID",
+                                 pAdjustMethod = "none",
+                                 pvalueCutoff  = 0.05,
+                                 qvalueCutoff  = 1,
+                                 readable      = TRUE, pool = FALSE)
+
+
+head(ego)
+
+
+cc <- clusterProfiler::gofilter(ego, level = 5)
+head(cc)
+
+clusterProfiler::cnetplot(ego, showCategory=15,circular = FALSE,
+                          color.params = list(edge = 1),
+                          cex.params = list(category_node = 1, gene_node = 1, category_label = 1, gene_label = 0.6),
+                          layout="kk",
+                          node_label="category",
+                          highlight.params="alpha_hilight", max.overlaps=2)
+clusterProfiler::dotplot(ego, showCategory=15, color = "pvalue")
+ema <- enrichplot::pairwise_termsim(cc)
+clusterProfiler::emapplot(ema,showCategory = 15, layout="kk")
+
+
+go_filtered <- readr::read_delim("images/BS181_5h_ClusterProfilerGO.txt", delim="\t", col_names = T)
+
+go_filtered %>% 
+  tidyr::separate(GeneRatio, into = c("count", "bg"), sep = "/") %>%
+  dplyr::mutate(GeneRatio=(as.numeric(count) / as.numeric(bg)), Description=forcats::as_factor(Description)) %>%
+  ggplot2::ggplot(ggplot2::aes( Description,GeneRatio, color=-log10(pvalue)))+
+  ggplot2::geom_segment(ggplot2::aes(x=Description, xend=Description, y=0, yend=GeneRatio), lwd=1)+
+  ggplot2::geom_point(ggplot2::aes(size=as.numeric(count)))+
+  ggplot2::coord_flip()+
+  ggplot2::scale_color_gradient(low="#fd8d3c", high = "#b30000")+
+  ggplot2::theme_bw()
+```

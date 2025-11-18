@@ -1,0 +1,8 @@
+Description	count	bg	pvalue
+response to heat	26	168	0.013219851
+phosphorelay signal transduction system	4	11	0.017983069
+ribosome biogenesis	18	103	0.011413436
+ncRNA metabolic process	26	150	0.00287539
+rRNA metabolic process	15	71	0.003390834
+regulation of DNA-templated transcription	33	232	0.01907226
+vacuolar transport	6	13	0.000863471

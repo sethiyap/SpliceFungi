@@ -13,11 +13,11 @@ execute:
   warning: false
 ---
 
-## Splicing Analysis on fungal RNASeq data
+# Splicing Analysis on fungal RNASeq data
 
-RNASeq data was generated for Cn cells treated with drug. SpliceWiz,
-R-package was implemented to process BAM files and further analyse the
-splicing results.
+RNASeq data was generated for Cn cells treated with Cdk7 inhibitors.
+SpliceWiz, R-package was implemented to process BAM files and further
+analyse the splicing results.
 
 ### Install SpliceFungi
 
@@ -34,10 +34,10 @@ if(require("devtools")){
 
 ```
 
-#### Process BAM files
+### Process BAM files
 
-Fastq files were aligned to ensembl genome using STAR aligner and are
-processed with SpliceWiz (as below).
+Fastq files were aligned to ensembl genome using STAR aligner and were
+generally processed with SpliceWiz as below.
 
 ```{r process_bam, eval=FALSE}
 
@@ -64,11 +64,13 @@ gene_counts <- readRDS(file.path(pb_path, "main.FC.Rds"))
 gene_counts$counts
 ```
 
-## Sample analysis
+### Sample analysis
 
-### WT+SY-1365 (1h)
+## WT+SY-1365 (1h)
 
-```{r mev_1h_splicing, echo=FALSE, message=FALSE}
+Downstream processing of bam files
+
+```{r mev_1h_splicing, echo=TRUE, message=FALSE}
 
 ref_path <- "/Users/pooja/Documents/CDK7_project/SpliceFungi/Reference"
 
@@ -121,5 +123,129 @@ SpliceFungi::coverage_plot_for_list(event_list = event_list, res_edgeR = res_edg
 event_list <- c("A3SS:CNAG_00075-novelTr003-exon2;AFR92212-exon2", "A3SS:AFR95560-exon6;CNAG_07164-novelTr002-exon2")
 
 SpliceFungi::coverage_plot_for_list(event_list = event_list, res_edgeR = res_edgeR_Mev_1h, se_object = se_Mev_1h, control = "WT_1h",treatment = "WT_Mev_1h")
+
+```
+
+## WT+BS-181 (1h)
+
+```{r bs181_1h_splicing, echo=FALSE, message=FALSE}
+
+ref_path <- "/Users/pooja/Documents/CDK7_project/SpliceFungi/Reference"
+
+pb_path_bs_1h <- file.path("/Users/pooja/Documents/CDK7_project/SpliceFungi", "spliceWiz_process_1h_BS181/")
+
+control = "WT_1h"
+
+treatment = "WT_bs_1h"
+
+se_bs_1h <- SpliceFungi::get_ASE(reference_path = ref_path, processed_bam_path = pb_path_bs_1h, control = control, treatment = treatment, replicates = 3)
+
+se.filtered_bs_1h <- se_bs_1h[SpliceWiz::applyFilters(se_bs_1h),]
+
+res_edgeR_bs_1h <- SpliceFungi::get_DE_ASE(se_filtered_object =  se.filtered_bs_1h, control = control, treatment = treatment, plot_volcano = FALSE)
+
+raw_value_bs_1h <- SummarizedExperiment::assay(se.filtered_bs_1h, "Included") %>% tibble::as_tibble(rownames = NA)
+
+# splicing stats
+
+SpliceFungi::splicing_statistics(se_filtered_object = se.filtered_bs_1h, res_edgeR = res_edgeR_bs_1h)
+
+
+```
+
+## WT+BS-181 (5h)
+
+```{r bs181_5h_splicing, echo=TRUE, message=FALSE}
+
+ref_path <- "/Users/pooja/Documents/CDK7_project/SpliceFungi/Reference"
+
+pb_path_bs_5h <- file.path("/Users/pooja/Documents/CDK7_project/SpliceFungi", "spliceWiz_process_BS181_5h/")
+
+control = "WT_5h"
+
+treatment = "WT_bs_5h"
+
+se_bs_5h <- SpliceFungi::get_ASE(reference_path = ref_path, processed_bam_path = pb_path_bs_5h, control = treatment, treatment = control, replicates = 3)
+
+se.filtered_bs_5h <- se_bs_5h[SpliceWiz::applyFilters(se_bs_5h),]
+
+res_edgeR_bs_5h <- SpliceFungi::get_DE_ASE(se_filtered_object =  se.filtered_bs_5h, control = control, treatment = treatment, plot_volcano = FALSE) %>% 
+  dplyr::mutate(class=dplyr::if_else(logFC >=1, "up", dplyr::if_else(logFC<= -1, "down", "no-change"))) %>% 
+  dplyr::mutate(significance_FDR=dplyr::if_else(FDR< 0.05, "S","NS"),significance_PSI=dplyr::if_else(abs_deltaPSI>= 0.05, "S","NS"), 
+                significance=dplyr::if_else(FDR < 0.05 & abs_deltaPSI>= 0.05, "S", "NS"))
+
+# All events Vs signficant events 
+AS_tt <- res_edgeR_bs_5h %>% 
+          dplyr::select(EventName, EventType, significance) %>% 
+          dplyr::group_by(EventType) %>% 
+          dplyr::tally()
+
+deg_tt <- res_edgeR_bs_5h %>% 
+          dplyr::select(EventName, EventType, significance_FDR) %>%
+          dplyr::filter(significance_FDR=="S") %>%
+          dplyr::group_by(EventType) %>% 
+          dplyr::count()
+
+se_stats <- AS_tt %>% 
+          dplyr::left_join(deg_tt,by="EventType") 
+
+ggplot2::ggplot(res_edgeR_bs_5h,
+        ggplot2::aes(x = logFC, y = -log10(FDR), color=significance_FDR)) +         
+        ggplot2::geom_point()  +
+        ggplot2::scale_color_manual(values=c("grey", "red"))+
+        ggplot2::labs(title = "Differential analysis - BS181 vs WT (5h)",
+         x = "Log2-fold change", y = "FDR (-log10)")+ggplot2::theme_bw()+
+        ggplot2::theme(axis.text = ggplot2::element_text(size=12, color="black"))
+
+raw_value_bs_5h <- SummarizedExperiment::assay(se.filtered_bs_5h, "Included") %>% tibble::as_tibble(rownames = NA)
+
+```
+
+#### Splicing Stats BS_181 5h
+
+```{r bs_5h_splicing_stats, echo=TRUE, message=FALSE}
+
+SpliceFungi::splicing_statistics(se_filtered_object = se.filtered_bs_5h, res_edgeR = res_edgeR_bs_5h)
+```
+
+#### IR events
+
+```{r bs_5h_IR_events, echo=TRUE, message=FALSE, fig.height=6, fig.width=12}
+
+event_list=c("CNAG_03645/AFR93150_Intron1/clean", "CNAG_01232/AFR94914_Intron6/clean", "CNAG_02944/AFR93748_Intron1/clean" )
+
+SpliceFungi::coverage_plot_for_list(event_list = event_list, res_edgeR = res_edgeR_bs_5h, se_object = se_bs_5h, control = "WT_5h",treatment = "WT_bs_5h")
+```
+
+#### GO analysis on IR events at 5h post BS-181 treatment
+
+```{r GO_analysis_bs, echo=TRUE, message=FALSE}
+
+go_dt <- readr::read_delim("BS181_5h_IR_genes.txt", delim="\t", col_names = TRUE)
+
+#install.packages("../../CnCAKfunctions/org.CneoformansH99v64.eg.db")
+
+library(org.CneoformansH99v64.eg.db)
+
+ego <- clusterProfiler::enrichGO(gene = go_dt$EventName,
+                                 OrgDb         = org.CneoformansH99v64.eg.db,
+                                 ont           = "BP",
+                                 keyType = "GID",
+                                 pAdjustMethod = "none",
+                                 pvalueCutoff  = 0.05,
+                                 qvalueCutoff  = 1,
+                                 readable      = TRUE, pool = FALSE)
+
+cc <- clusterProfiler::gofilter(ego, level = 5)
+
+go_filtered <- readr::read_delim("BS181_5h_ClusterProfilerGO.txt", delim="\t", col_names = T)
+
+go_filtered %>% dplyr::mutate(GeneRatio=(as.numeric(count) / as.numeric(bg)), Description=forcats::as_factor(Description)) %>%
+  ggplot2::ggplot(ggplot2::aes( Description,GeneRatio, color=-log10(pvalue)))+
+  ggplot2::geom_segment(ggplot2::aes(x=Description, xend=Description, y=0, yend=GeneRatio), lwd=1)+
+  ggplot2::geom_point(ggplot2::aes(size=as.numeric(count)))+
+  ggplot2::coord_flip()+
+  ggplot2::scale_color_gradient(low="#fd8d3c", high = "#b30000")+
+  ggplot2::theme_bw()
 
 ```
